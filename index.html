@@ -14,6 +14,7 @@
         <div class="glow-orb glow-2"></div>
         <div class="glow-orb glow-3"></div>
         <div class="particles"></div>
+        <div class="scan-line"></div>
     </div>
 
     <!-- Main Container -->
@@ -52,168 +53,123 @@
             <div class="login-container">
                 <div class="login-box">
                     <div class="login-header">
-                        <h2>Admin Panel Access</h2>
+                        <h2>Admin Login</h2>
                         <p>Enter your credentials</p>
                     </div>
-
-                    <form id="adminLoginForm" onsubmit="verifyAdminPassword(event)">
+                    <div id="loginError" class="login-error"></div>
+                    <form onsubmit="handleAdminLogin(event)">
+                        <div class="input-group">
+                            <label for="adminEmail">Email</label>
+                            <input type="email" id="adminEmail" placeholder="admin@abhinav.com" required>
+                        </div>
                         <div class="input-group">
                             <label for="adminPassword">Password</label>
                             <div class="password-input-wrapper">
-                                <input 
-                                    type="password" 
-                                    id="adminPassword" 
-                                    placeholder="Enter admin password"
-                                    required
-                                >
-                                <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">
+                                <input type="password" id="adminPassword" placeholder="Enter password" required>
+                                <button type="button" class="toggle-password" onclick="togglePasswordVisibility('adminPassword')">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
                         </div>
-
-                        <button type="submit" class="btn btn-submit">Access Admin Panel</button>
+                        <button type="submit" class="btn btn-submit">Login</button>
                     </form>
-
-                    <button class="btn btn-back" onclick="backToLanding()">
+                    <button class="btn btn-back" onclick="backToLanding()" style="margin-top: 15px;">
                         <i class="fas fa-arrow-left"></i> Back
                     </button>
-
-                    <div id="loginError" class="error-message"></div>
                 </div>
             </div>
         </div>
 
         <!-- Admin Dashboard -->
         <div id="adminDashboard" class="page">
-            <nav class="admin-nav">
-                <div class="nav-brand">
-                    <h2>ADMIN PANEL</h2>
-                </div>
-                <div class="nav-links">
-                    <a href="#" onclick="showAdminSection('upload')">Upload Files</a>
-                    <a href="#" onclick="showAdminSection('manage')">Manage Files</a>
-                    <a href="#" onclick="showAdminSection('settings')">Settings</a>
-                </div>
+            <div class="admin-header">
+                <h2 class="admin-title">Admin Control Panel</h2>
                 <button class="btn btn-logout" onclick="logoutAdmin()">
                     <i class="fas fa-sign-out-alt"></i> Logout
                 </button>
-            </nav>
-
+            </div>
             <div class="admin-content">
-                <!-- Upload Section -->
-                <div id="uploadSection" class="admin-section active">
-                    <div class="section-header">
-                        <h2>Upload New Files</h2>
-                        <p>Add files and their documentation</p>
+                <div class="admin-sidebar">
+                    <div class="admin-nav-item active" onclick="showAdminSection('upload')">
+                        <i class="fas fa-cloud-upload-alt"></i> Upload Files
                     </div>
-
-                    <div class="upload-form-container">
-                        <form id="uploadForm" onsubmit="handleFileUpload(event)">
+                    <div class="admin-nav-item" onclick="showAdminSection('manage')">
+                        <i class="fas fa-cogs"></i> Manage Files
+                    </div>
+                    <div class="admin-nav-item" onclick="showAdminSection('sync')">
+                        <i class="fas fa-sync-alt"></i> Sync Status
+                    </div>
+                </div>
+                <div class="admin-main">
+                    <!-- Upload Section -->
+                    <div id="uploadSection" class="admin-section active">
+                        <h3 style="color: white; margin-bottom: 25px; font-size: 1.5rem;">
+                            <i class="fas fa-cloud-upload-alt"></i> Upload New Tool/Bot
+                        </h3>
+                        <form onsubmit="handleFileUpload(event)" style="max-width: 600px;">
                             <div class="form-group">
-                                <label for="fileName">File Name</label>
-                                <input 
-                                    type="text" 
-                                    id="fileName" 
-                                    placeholder="Enter file name"
-                                    required
-                                >
+                                <label>Tool Name</label>
+                                <input type="text" id="toolName" placeholder="e.g., Password Generator" required>
                             </div>
-
                             <div class="form-group">
-                                <label for="fileDescription">Description</label>
-                                <textarea 
-                                    id="fileDescription" 
-                                    placeholder="Enter brief description"
-                                    rows="3"
-                                    required
-                                ></textarea>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="readmeContent">README Content</label>
-                                <textarea 
-                                    id="readmeContent" 
-                                    placeholder="Enter README content (supports markdown)"
-                                    rows="5"
-                                    required
-                                ></textarea>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="fileUrl">File URL / Download Link</label>
-                                <input 
-                                    type="url" 
-                                    id="fileUrl" 
-                                    placeholder="https://example.com/file"
-                                    required
-                                >
-                            </div>
-
-                            <div class="form-group">
-                                <label for="fileCategory">Category</label>
-                                <select id="fileCategory" required>
+                                <label>Category</label>
+                                <select id="toolCategory" required>
                                     <option value="">Select Category</option>
-                                    <option value="Tools">Tools</option>
-                                    <option value="Bots">Bots</option>
-                                    <option value="Scripts">Scripts</option>
-                                    <option value="Documentation">Documentation</option>
-                                    <option value="Other">Other</option>
+                                    <option value="utilities">Utilities</option>
+                                    <option value="bots">Bots</option>
+                                    <option value="security">Security</option>
+                                    <option value="productivity">Productivity</option>
+                                    <option value="other">Other</option>
                                 </select>
                             </div>
-
-                            <button type="submit" class="btn btn-primary">
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="toolDescription" placeholder="Describe your tool..." required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>File URL / Link</label>
+                                <input type="url" id="toolURL" placeholder="https://example.com/tool.exe" required>
+                            </div>
+                            <div class="form-group">
+                                <label>File Size (KB)</label>
+                                <input type="number" id="toolSize" placeholder="1024" required>
+                            </div>
+                            <button type="submit" class="btn btn-submit">
                                 <i class="fas fa-upload"></i> Upload File
                             </button>
                         </form>
                     </div>
-                </div>
 
-                <!-- Manage Section -->
-                <div id="manageSection" class="admin-section">
-                    <div class="section-header">
-                        <h2>Manage Files</h2>
-                        <p>Edit, delete, or view uploaded files</p>
+                    <!-- Manage Section -->
+                    <div id="manageSection" class="admin-section">
+                        <h3 style="color: white; margin-bottom: 25px; font-size: 1.5rem;">
+                            <i class="fas fa-cogs"></i> Manage Uploaded Files
+                        </h3>
+                        <div id="managedFilesList"></div>
                     </div>
 
-                    <div id="adminFilesList" class="admin-files-list">
-                        <!-- Files will be populated here -->
-                    </div>
-                </div>
-
-                <!-- Settings Section -->
-                <div id="settingsSection" class="admin-section">
-                    <div class="section-header">
-                        <h2>Settings & Social Links</h2>
-                        <p>Configure your social media links</p>
-                    </div>
-
-                    <div class="settings-form">
-                        <form id="settingsForm" onsubmit="updateSettings(event)">
-                            <div class="form-group">
-                                <label for="instagramLink">Instagram Link</label>
-                                <input 
-                                    type="url" 
-                                    id="instagramLink" 
-                                    placeholder="https://instagram.com/yourprofile"
-                                    value="https://instagram.com"
-                                >
-                            </div>
-
-                            <div class="form-group">
-                                <label for="discordLink">Discord Link</label>
-                                <input 
-                                    type="url" 
-                                    id="discordLink" 
-                                    placeholder="https://discord.gg/yourserver"
-                                    value="https://discord.com"
-                                >
-                            </div>
-
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Save Settings
+                    <!-- Sync Status Section -->
+                    <div id="syncSection" class="admin-section">
+                        <h3 style="color: white; margin-bottom: 25px; font-size: 1.5rem;">
+                            <i class="fas fa-sync-alt"></i> Sync Status
+                        </h3>
+                        <div style="background: rgba(0, 184, 148, 0.1); border: 1px solid rgba(0, 184, 148, 0.3); padding: 20px; border-radius: 12px; color: white;">
+                            <p style="margin-bottom: 15px;">
+                                <strong>Status:</strong> <span id="syncStatus" style="color: #00d4aa;">Active</span>
+                            </p>
+                            <p style="margin-bottom: 15px;">
+                                <strong>Files Synced:</strong> <span id="syncCount">0</span>
+                            </p>
+                            <p style="margin-bottom: 15px;">
+                                <strong>Last Update:</strong> <span id="lastSyncTime">Never</span>
+                            </p>
+                            <p style="margin-bottom: 15px;">
+                                <strong>Connected Devices:</strong> <span id="connectedDevices">1</span>
+                            </p>
+                            <button class="btn btn-primary" onclick="forceSyncNow()" style="margin-top: 15px;">
+                                <i class="fas fa-redo"></i> Force Sync Now
                             </button>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -221,67 +177,38 @@
 
         <!-- User Dashboard -->
         <div id="userDashboard" class="page">
-            <nav class="user-nav">
-                <div class="nav-brand">
-                    <h2>ABHINAV TOOLS AND BOTS</h2>
-                </div>
-                <div class="nav-search">
-                    <input 
-                        type="text" 
-                        id="searchInput" 
-                        placeholder="Search files..."
-                        onkeyup="searchFiles()"
-                    >
-                    <i class="fas fa-search"></i>
-                </div>
-                <div class="nav-actions">
-                    <select id="categoryFilter" onchange="filterByCategory()" class="category-select">
+            <div class="user-header">
+                <h2 class="user-title"><i class="fas fa-download"></i> Available Tools & Bots</h2>
+                <div class="user-controls">
+                    <div class="search-box">
+                        <input type="text" id="searchBox" placeholder="Search tools..." onkeyup="filterFiles()">
+                    </div>
+                    <select class="filter-select" id="categoryFilter" onchange="filterFiles()">
                         <option value="">All Categories</option>
-                        <option value="Tools">Tools</option>
-                        <option value="Bots">Bots</option>
-                        <option value="Scripts">Scripts</option>
-                        <option value="Documentation">Documentation</option>
-                        <option value="Other">Other</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="bots">Bots</option>
+                        <option value="security">Security</option>
+                        <option value="productivity">Productivity</option>
+                        <option value="other">Other</option>
                     </select>
-                    <button class="btn btn-back-user" onclick="backToLanding()">
-                        <i class="fas fa-arrow-left"></i>
+                    <button class="btn btn-download" onclick="backToLanding()">
+                        <i class="fas fa-arrow-left"></i> Back
                     </button>
                 </div>
-            </nav>
-
-            <div class="user-content">
-                <div id="filesContainer" class="files-grid">
-                    <!-- Files will be populated here -->
-                </div>
-                <div id="noFiles" class="no-files-message">
-                    <i class="fas fa-inbox"></i>
-                    <p>No files available yet. Check back soon!</p>
-                </div>
             </div>
-
-            <footer class="user-footer">
-                <div class="social-links">
-                    <a href="https://instagram.com" target="_blank" class="social-link instagram">
-                        <i class="fab fa-instagram"></i> Instagram
-                    </a>
-                    <a href="https://discord.com" target="_blank" class="social-link discord">
-                        <i class="fab fa-discord"></i> Discord
-                    </a>
-                </div>
-            </footer>
-        </div>
-
-        <!-- File Detail Modal -->
-        <div id="fileModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeFileModal()">&times;</span>
-                <div id="modalBody" class="modal-body">
-                    <!-- File details will be populated here -->
-                </div>
+            <div class="user-content">
+                <div id="filesList" class="files-grid"></div>
             </div>
         </div>
     </div>
 
+    <!-- File Details Modal -->
+    <div id="fileModal">
+        <div id="modalBody"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="sync.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
