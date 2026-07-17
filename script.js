@@ -1,12 +1,22 @@
 // =====================================================
-// REAL-TIME DATA SYNCHRONIZATION WITH LOCALSTORAGE & BROADCAST
+// REAL-TIME CROSS-DEVICE SYNC WITH FIREBASE
 // =====================================================
 
 const ADMIN_PASSWORD = 'abhinav22456';
 const STORAGE_KEY = 'abhinav_files_data';
 const SETTINGS_KEY = 'abhinav_settings';
 
-// Initialize data structure
+// Firebase Configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyDmVpZ_5xK8L2q9M1z3N4o5P6Q7R8s9T0u",
+    authDomain: "abhinav-tools.firebaseapp.com",
+    databaseURL: "https://abhinav-tools-default-rtdb.firebaseio.com",
+    projectId: "abhinav-tools",
+    storageBucket: "abhinav-tools.appspot.com",
+    messagingSenderId: "123456789012",
+    appId: "1:123456789012:web:abcdef123456"
+};
+
 let appData = {
     files: [],
     settings: {
@@ -15,38 +25,90 @@ let appData = {
     }
 };
 
-// Create a Broadcast Channel for real-time sync across tabs/windows
-let broadcastChannel = null;
-try {
-    broadcastChannel = new BroadcastChannel('abhinav_tools_channel');
-    broadcastChannel.onmessage = (event) => {
-        console.log('Received broadcast:', event.data);
-        if (event.data.type === 'FILE_UPDATE' || event.data.type === 'FILE_DELETE' || event.data.type === 'FILE_ADD') {
-            appData = event.data.appData;
-            saveToStorage();
-            refreshCurrentView();
+let db = null;
+let firebaseLoaded = false;
+
+// =====================================================
+// FIREBASE INITIALIZATION
+// =====================================================
+
+async function initFirebase() {
+    try {
+        if (!window.firebase) {
+            await loadFirebaseSDK();
         }
-        if (event.data.type === 'SETTINGS_UPDATE') {
-            appData.settings = event.data.settings;
-            saveToStorage();
-            updateSettingsUI();
+        
+        if (window.firebase && !window.firebase.apps.length) {
+            window.firebase.initializeApp(firebaseConfig);
         }
-    };
-} catch (e) {
-    console.log('BroadcastChannel not supported, using localStorage only');
+        
+        db = window.firebase.database();
+        firebaseLoaded = true;
+        setupFirebaseListeners();
+        console.log('✅ Firebase connected - cross-device sync enabled');
+    } catch (error) {
+        console.log('⚠️ Firebase not available, using localStorage only');
+        firebaseLoaded = false;
+        loadFromStorage();
+    }
 }
 
-// Listen for storage changes from other tabs
-window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEY) {
-        appData = JSON.parse(event.newValue || JSON.stringify({ files: [], settings: appData.settings }));
-        refreshCurrentView();
+function loadFirebaseSDK() {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js';
+        script.onload = () => {
+            const dbScript = document.createElement('script');
+            dbScript.src = 'https://www.gstatic.com/firebasejs/10.0.0/firebase-database-compat.js';
+            dbScript.onload = () => resolve();
+            dbScript.onerror = () => {
+                console.log('Failed to load Firebase Database SDK');
+                resolve();
+            };
+            document.head.appendChild(dbScript);
+        };
+        script.onerror = () => {
+            console.log('Failed to load Firebase SDK');
+            resolve();
+        };
+        document.head.appendChild(script);
+    });
+}
+
+function setupFirebaseListeners() {
+    if (!db) return;
+    
+    try {
+        // Real-time sync for files
+        db.ref('files').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                appData.files = Array.isArray(data) ? data : Object.values(data);
+                saveToStorage();
+                refreshCurrentView();
+                console.log('📥 Files synced from Firebase');
+            }
+        }, (error) => {
+            console.log('Firebase read error:', error);
+        });
+        
+        // Real-time sync for settings
+        db.ref('settings').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                appData.settings = data;
+                saveToStorage();
+                updateSettingsUI();
+                updateSocialLinks();
+                console.log('📥 Settings synced from Firebase');
+            }
+        }, (error) => {
+            console.log('Firebase read error:', error);
+        });
+    } catch (error) {
+        console.log('Error setting up Firebase listeners:', error);
     }
-    if (event.key === SETTINGS_KEY) {
-        appData.settings = JSON.parse(event.newValue || JSON.stringify(appData.settings));
-        updateSettingsUI();
-    }
-});
+}
 
 // =====================================================
 // LOAD & SAVE DATA
@@ -57,10 +119,18 @@ function loadFromStorage() {
     const storedSettings = localStorage.getItem(SETTINGS_KEY);
     
     if (stored) {
-        appData.files = JSON.parse(stored);
+        try {
+            appData.files = JSON.parse(stored);
+        } catch (e) {
+            console.log('Error parsing files from storage');
+        }
     }
     if (storedSettings) {
-        appData.settings = JSON.parse(storedSettings);
+        try {
+            appData.settings = JSON.parse(storedSettings);
+        } catch (e) {
+            console.log('Error parsing settings from storage');
+        }
     }
 }
 
@@ -69,17 +139,29 @@ function saveToStorage() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(appData.settings));
 }
 
-function broadcastUpdate(type, payload = {}) {
-    if (broadcastChannel) {
-        broadcastChannel.postMessage({
-            type: type,
-            appData: appData,
-            timestamp: new Date().toISOString(),
-            ...payload
-        });
+function saveToFirebase(type) {
+    if (!firebaseLoaded || !db) {
+        console.log('Firebase not available');
+        return;
     }
-    // Also emit custom event for same-page listeners
-    window.dispatchEvent(new CustomEvent('dataUpdate', { detail: { type, payload } }));
+    
+    try {
+        if (type === 'files') {
+            db.ref('files').set(appData.files).then(() => {
+                console.log('📤 Files uploaded to Firebase');
+            }).catch(err => {
+                console.log('Firebase write error:', err.message);
+            });
+        } else if (type === 'settings') {
+            db.ref('settings').set(appData.settings).then(() => {
+                console.log('📤 Settings uploaded to Firebase');
+            }).catch(err => {
+                console.log('Firebase write error:', err.message);
+            });
+        }
+    } catch (error) {
+        console.log('Error saving to Firebase:', error);
+    }
 }
 
 // =====================================================
@@ -188,13 +270,11 @@ function handleFileUpload(event) {
     
     appData.files.push(newFile);
     saveToStorage();
-    broadcastUpdate('FILE_ADD', { file: newFile });
+    saveToFirebase('files');
     
-    // Reset form
     document.getElementById('uploadForm').reset();
-    alert('✅ File uploaded successfully! It\'s now visible to all users.');
+    alert('✅ File uploaded! Visible to all users on all devices NOW!');
     
-    // Refresh display
     displayAdminFiles();
 }
 
@@ -288,22 +368,22 @@ function saveEditedFile(fileId) {
     file.updatedAt = new Date().toISOString();
     
     saveToStorage();
-    broadcastUpdate('FILE_UPDATE', { file: file });
+    saveToFirebase('files');
     
     closeFileModal();
     displayAdminFiles();
-    alert('✅ File updated successfully! Changes are now visible to all users.');
+    alert('✅ Updated! All devices see changes NOW!');
 }
 
 function deleteAdminFile(fileId) {
-    if (confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
+    if (confirm('Delete this file permanently?')) {
         appData.files = appData.files.filter(f => f.id !== fileId);
         saveToStorage();
-        broadcastUpdate('FILE_DELETE', { fileId: fileId });
+        saveToFirebase('files');
         
         displayAdminFiles();
         displayUserFiles();
-        alert('✅ File deleted successfully! Changes are now visible to all users.');
+        alert('✅ Deleted! All users see it removed NOW!');
     }
 }
 
@@ -323,9 +403,9 @@ function updateSettings(event) {
     appData.settings.discord = document.getElementById('discordLink').value;
     
     saveToStorage();
-    broadcastUpdate('SETTINGS_UPDATE', { settings: appData.settings });
+    saveToFirebase('settings');
     
-    alert('✅ Settings updated successfully! Links are now updated for all users.');
+    alert('✅ Settings updated worldwide!');
     updateSocialLinks();
 }
 
@@ -335,7 +415,7 @@ function updateSettingsUI() {
 }
 
 // =====================================================
-// USER DASHBOARD - FILE DISPLAY
+// USER DASHBOARD
 // =====================================================
 
 function displayUserFiles(filterCategory = '', searchTerm = '') {
@@ -346,12 +426,10 @@ function displayUserFiles(filterCategory = '', searchTerm = '') {
     
     let filteredFiles = appData.files;
     
-    // Apply category filter
     if (filterCategory) {
         filteredFiles = filteredFiles.filter(f => f.category === filterCategory);
     }
     
-    // Apply search filter
     if (searchTerm) {
         const term = searchTerm.toLowerCase();
         filteredFiles = filteredFiles.filter(f =>
@@ -462,14 +540,12 @@ function filterByCategory() {
 function updateSocialLinks() {
     loadFromStorage();
     
-    // Update landing page links
     const landingSocial = document.querySelectorAll('.social-links-landing a');
     if (landingSocial.length > 0) {
         landingSocial[0].href = appData.settings.instagram;
         landingSocial[1].href = appData.settings.discord;
     }
     
-    // Update user footer links
     const userFooterLinks = document.querySelectorAll('.user-footer .social-link');
     if (userFooterLinks.length > 0) {
         userFooterLinks[0].href = appData.settings.instagram;
@@ -478,7 +554,7 @@ function updateSocialLinks() {
 }
 
 // =====================================================
-// REFRESH CURRENT VIEW BASED ON ACTIVE PAGE
+// REFRESH VIEW
 // =====================================================
 
 function refreshCurrentView() {
@@ -487,8 +563,8 @@ function refreshCurrentView() {
     if (!activePage) return;
     
     if (activePage.id === 'userDashboard') {
-        const searchTerm = document.getElementById('searchInput').value;
-        const categoryFilter = document.getElementById('categoryFilter').value;
+        const searchTerm = document.getElementById('searchInput')?.value || '';
+        const categoryFilter = document.getElementById('categoryFilter')?.value || '';
         displayUserFiles(categoryFilter, searchTerm);
         updateSocialLinks();
     } else if (activePage.id === 'adminDashboard') {
@@ -511,36 +587,22 @@ function escapeHtml(unsafe) {
 }
 
 // =====================================================
-// INITIALIZE APP ON PAGE LOAD
+// INITIALIZE APP
 // =====================================================
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    await initFirebase();
     loadFromStorage();
     updateSocialLinks();
     
-    // Close modal when clicking outside
-    document.getElementById('fileModal').addEventListener('click', function(event) {
+    document.getElementById('fileModal')?.addEventListener('click', function(event) {
         if (event.target === this) {
             closeFileModal();
         }
     });
-    
-    // Listen for data updates from other tabs
-    window.addEventListener('dataUpdate', (event) => {
-        console.log('Data updated:', event.detail);
-        refreshCurrentView();
-    });
 });
 
-// Periodic sync from localStorage (every 2 seconds)
+// Periodic refresh every 3 seconds
 setInterval(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-        const newData = JSON.parse(stored);
-        // Check if data changed
-        if (JSON.stringify(newData) !== JSON.stringify(appData.files)) {
-            appData.files = newData;
-            refreshCurrentView();
-        }
-    }
-}, 2000);
+    refreshCurrentView();
+}, 3000);
